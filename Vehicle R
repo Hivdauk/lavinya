@@ -1,0 +1,51 @@
+# !diagnostics off
+View(vehicle)
+head(vehicle)
+names(vehicle)
+x = vehicle[,19]
+y = vehicle$Class
+kc <- kmeans(x,4)
+kc
+table(y,kc$cluster)
+plot(x[c("Holl.Ra", "Holl.Ra")], col=kc$cluster)
+points(kc$centers[,c("Holl.Ra", "Holl.Ra")], col=1:846, pch=19, cex=3)
+library(datasets)
+head(vehicle)
+set.seed(20)
+vehicleCluster <- kmeans(vehicle[, 3:4], 3, nstart = 20)
+vehicleCluster
+table(vehicleCluster$cluster,vehicle$Comp)
+library(NbClust)
+data(vehicle)
+str(vehicle)
+vehicle$Holl.Ra=NULL
+set.seed(30)
+clusterNo=NbClust(vehicle,distance="euclidean", min.nc=4,max.nc=10,method="kmeans",index="all")
+clusterNo=NbClust(vehicle,distance="manhattan", min.nc=2,max.nc=15,method="kmeans",index="all")
+k = 2:10
+set.seed(42)	
+WSS = sapply(k, function(k) {kmeans(vehicle[1:18], centers=k)$tot.withinss})
+plot(k, WSS, type="l", xlab= "Number of k", ylab="Within sum of squares")
+str(vehicle)
+data.train<-scale(vehicle[-1])
+summary(data.train)
+set.seed(1234)
+###############
+vehicle <- vehicle[-1] # Without first line (int)
+data.transformed <- t(vehicle) # Transformation of matrix
+data.scale <- scale(data.transformed) # Scaling of table
+data.dist <- dist(data.scale) # Calculates distances between points
+
+fit.average <- hclust(data.dist, method = "kmeans")
+plot(fit.average, hang = -1, cex = .8, main = "Average Linkage Clustering")
+
+library(NbClust)
+nc <- NbClust(data.scale, distance="euclidean", 
+              min.nc=1, max.nc=200, method="kmeans") 
+barplot(table(nc$Best.n[1,]),    # provide bar charts####
+        xlab="Numer of Clusters",
+        ylab="Number of Criteria",
+        main="Number of Clusters Chosen by 50 Criteria")
+#############
+plot(vehicle)
+vehicle
