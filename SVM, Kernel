@@ -1,0 +1,250 @@
+#Import Library
+require(e1071) #Contains the SVM 
+library(readxl)
+library(e1071)
+Train <- read_excel("Desktop/Data Mining and Machine Learning Coursework/Final hali/NN MLP/exchangeGBP.xlsx")
+Test <- read_excel("Desktop/Data Mining and Machine Learning Coursework/Final hali/NN MLP/exchangeGBP.xlsx")
+exchangeGBP<- read_excel("Desktop/Data Mining and Machine Learning Coursework/Final hali/NN MLP/exchangeGBP.xlsx")
+# there is a number of various parameters/options associated with SVM training, like changing kernel, gamma and C value.
+exchangeGBP$`YYYY/MM/DD`<- as.numeric(exchangeGBP$`YYYY/MM/DD`, units="days")
+# create model
+View(exchangeGBP)
+model <- svm(exchangeGBP$`YYYY/MM/DD`~exchangeGBP$`GBP/EUR`,data=Train,kernel='linear',gamma=0.2,cost=100)
+plot(model)
+#Predict Output
+preds <- predict(model,Test)
+table(preds)
+head(exchangeGBP)
+names(exchangeGBP)
+str(exchangeGBP)
+summary(exchangeGBP)
+
+
+#I know I am not responsible for to do this but I want to include this part of subject too.
+#I am going to divide the data to x (which contain the all features) and y (only the classes) like I have done on tutorial
+
+x = exchangeGBP[,-1]
+y = exchangeGBP$`YYYY/MM/DD`
+
+svm_model <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data=exchangeGBP) 
+#default parameters
+summary(svm_model)
+svm_model1 <- svm(x,y)
+summary(svm_model1)  
+
+#Below it can be seen that the confusion matrix result of prediction, using command table to compare the result of SVM prediction and the class data in y variable.
+
+pred <- predict(svm_model1,x)
+pred
+table(pred,y)
+
+#Tuning SVM to find the best cost and gamma.
+svm_tune <- tune(svm, train.x=x, train.y=y, 
+                 kernel="radial", ranges=list(cost=10^(-1:2), gamma=c(.5,1,2)))
+print(svm_tune)
+
+#After finding the best cost and gama values it is time to create svm model again and try to run again.
+svm_model_after_tune <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data=exchangeGBP, kernel="radial", cost=1, gamma=0.5)
+summary(svm_model_after_tune)
+plot(svm_model_after_tune)
+table(pred,y)
+pred <- predict(svm_model_after_tune,x)
+
+#Once again  the confusion matrix result of prediction, using command table to compare the result of SVM prediction and the class data in y variable.
+table(pred,y)
+
+plot(rnorm(50), rnorm(50))
+dev.set(which = dev.next())
+
+#linear kernel specification
+svm_model_after_tune <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data=exchangeGBP, kernel="linear", cost=100, gamma=0.5)
+summary(svm_model_after_tune)
+pred <- predict(svm_model_after_tune,x)
+table(pred,y)
+plot(svm_model_after_tune)
+
+#sigmoid kernel specification
+
+svm_model_after_tune <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data=exchangeGBP, kernel="sigmoid", cost=100, gamma=0.5)
+summary(svm_model_after_tune)
+pred <- predict(svm_model_after_tune,x)
+table(pred,y)
+plot(svm_model_after_tune)
+
+#polynomial kernel specification
+svm_model_after_tune <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data=exchangeGBP, kernel="polynomial", cost=100, gamma=0.5)
+summary(svm_model_after_tune)
+pred <- predict(svm_model_after_tune,x)
+table(pred,y)
+plot(svm_model_after_tune)
+
+
+#####
+str(exchangeGBP$`YYYY/MM/DD`)
+x <- subset(exchangeGBP, select =-exchangeGBP$`YYYY/MM/DD`) 
+y <-as.numeric(exchangeGBP$`YYYY/MM/DD`)   
+str(y)
+str(x)
+exchangeGBP_factor<-cbind(x, y)  # check the use of cbind
+str(exchangeGBP_factor)
+
+
+
+exchangeGBPTrain<-exchangeGBP_factor[1:400,]
+exchangeGBPTest<-exchangeGBP_factor[401:500,]
+
+x_factor <- subset(exchangeGBPTest, select = -exchangeGBP$`YYYY/MM/DD`)
+y_factor <- exchangeGBPTest$`GBP/EUR`
+
+exchangeGBP_svm <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data = exchangeGBPTrain)
+summary(exchangeGBP_svm)
+
+
+#Now it can be seen that last column has changed to numeriv from factor which has end up changing SVM type regression.
+
+na.omit(exchangeGBP) #Just wanted to chack my data an remove NA values in case if it has NA values 
+length(y_factor) # I was keep getting error which says two attributes has different lenghts so wanted to check lenghts of both variables
+length(x_factor)
+exchangeGBP_factor_predict <- predict(exchangeGBP_svm, x_factor);
+table(y_factor)
+1-sum(exchangeGBP_factor_predict == y_factor)/length(y_factor)
+length(exchangeGBP_factor_predict)
+
+
+
+
+exchangeGBP_svm_tuned <- tune(svm, exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data = exchangeGBPTrain,
+                       ranges = list(gamma = seq(.05,.11,.01), cost = seq(1,4,0.5)),
+                       tunecontrol = tune.control(sampling = "cross"))
+
+summary(exchangeGBP_svm_tuned)
+plot(exchangeGBP_svm_tuned)
+
+exchangeGBP_svm_tuned$best.parameters
+
+
+exchangeGBP_svm <- svm(y ~ exchangeGBP$`GBP/EUR`, data = exchangeGBPTrain, gamma = 0.07, cost = 1.5)
+exchangeGBP_factor_predict <- predict(exchangeGBP_svm, x_factor);
+1-sum(exchangeGBP_factor_predict == y_factor)/length(y_factor)
+
+## [1] 1
+# Next treat the last column as a numeric. 
+PoundEuro<- exchangeGBP$`GBP/EUR`
+exchangeGBP_numeric<-cbind(x, PoundEuro=y)
+str(exchangeGBP_numeric)
+
+
+exchangeGBPTrain<-exchangeGBP_numeric[1:400,]
+exchangeGBPTest<-exchangeGBP_numeric[401:500,]
+
+x_factor <- subset(exchangeGBPTest, select = -PoundEuro)
+y_factor <- exchangeGBP$`GBP/EUR`
+
+exchangeGBP_svm <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data = exchangeGBPTrain)
+summary(exchangeGBP_svm)
+
+
+exchangeGBP_factor_predict <- predict(exchangeGBP_svm, x_factor);
+sqrt( sum((exchangeGBPTest$`GBP/EUR`-exchangeGBP_factor_predict)^2))/length(exchangeGBP_factor_predict)
+summary(exchangeGBP_svm_tuned)
+
+plot(exchangeGBP_svm_tuned)
+exchangeGBP_svm_tuned$best.parameters
+
+
+exchangeGBP_svm <- svm(exchangeGBP$`YYYY/MM/DD` ~ exchangeGBP$`GBP/EUR`, data = exchangeGBPTrain, gamma = 0.1, cost = 2)
+exchangeGBP_factor_predict <- predict(exchangeGBP_svm, x_factor);
+sqrt(sum((exchangeGBPTest$`GBP/EUR`- exchangeGBP_factor_predict)^2))/length(exchangeGBP_factor_predict)
+
+               #4.Objective^#
+    ###########Designing a SVR###############
+#Design an SVR and use various structures/parameters (incl. linear/nonlinear kernels)
+x=c(30:50) #There is nothing special me choosing this vectors I just wanted to create easy and usable ones
+y=c((2:22)^2)
+
+x
+y
+
+xy<- data.frame(x,y)
+train=data.frame(x,y)
+plot(train, pch=16, col= 1:4)
+model <- lm(y ~ x, train)
+abline(model)
+training.model<- lm(train)
+
+# make a prediction for each x
+pred_lm <- predict(model, train)
+
+# display the predictions
+points(train$x, pred_lm, col = "blue", pch=4)
+
+#define RMSE function
+rmse <- function(error)
+{
+  sqrt(mean(error^2))
+}
+error <- model$residuals  # same as (train$y ??? pred_lm)
+pred_RMSE <- rmse(error) 
+pred_RMSE
+
+#define MSE function
+
+mse = mean(training.model$residuals^2)
+mse
+
+#define MAPE function
+mape <- function(actual,pred){
+  mape <- mean(abs((actual - pred)/actual))*100
+  return (mape)
+}
+rowMeans(abs((xy-pred)/xy) * 100)
+
+#fit a model with SVM
+model_svm <- svm(y ~ x , train)
+
+#Use the predictions on the data
+pred <- predict(model_svm, train)
+pred
+
+#Plot the predictions and the plot to see our SVM model fit
+plot(train$x, pred,main='Predicted vs Real', col = "blue", pch=4)
+error_2 <- (train$y ~pred)
+svm_RMSE <- rmse(error_2) 
+summary(model_svm) 
+
+svm_tune <- tune(svm, y ~ x, data = train,ranges = list(epsilon = seq(0,1,0.01), cost = 2^(2:9)))
+print(svm_tune)
+
+
+best_mod <- svm_tune$best.model
+best_mod_pred <- predict(best_mod, train$y) 
+error_best_mod <- (train$y - best_mod_pred)
+
+best_mod_RMSE <- rmse(error_best_mod)     
+best_mod_RMSE
+#This tuning method is known as grid search. R runs all various models with all the possible values of epsilon and cost function in the specified range and gives us the model which has the lowest error. We can also plot our tuning model to see the performance of all the models together
+plot(svm_tune)
+plot(train,pch=16,col= 1:2)
+points(train$y, best_mod_pred, col = "blue", pch=4)
+
+
+#linear kernel specification
+svm_model_after_tune <- svm(x ~ y, data=xy, kernel="linear", cost=100, gamma=0.5)
+summary(svm_model_after_tune)
+pred <- predict(svm_model_after_tune,x)
+table(pred,y)
+
+#sigmoid kernel specification
+
+svm_model_after_tune <- svm(x ~ y, data=xy, kernel="sigmoid", cost=100, gamma=0.5)
+summary(svm_model_after_tune)
+pred <- predict(svm_model_after_tune,x)
+table(pred,y)
+plot(svm_model_after_tune)
+
+#polynomial kernel specification
+svm_model_after_tune <- svm(x ~ y, data=xy, kernel="polynomial", cost=100, gamma=0.5)
+summary(svm_model_after_tune)
+pred <- predict(svm_model_after_tune,x)
+table(pred,y)
+plot(svm_model_after_tune)
