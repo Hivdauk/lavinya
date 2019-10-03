@@ -1,0 +1,196 @@
+#Glass Identification Database from UCI contains 10 attributes including id. The response is glass type which has 7 discrete values.
+#Attributes
+#Id: 1 to 214 (removed from CSV file)
+#RI: refractive index
+#Na: Sodium (unit measurement: weight percent in corresponding oxide, as are attributes 4-10)
+#Mg: Magnesium
+#Al: Aluminum
+#Si: Silicon
+#K: Potassium
+#Ca: Calcium
+#Ba: Barium
+#Fe: Iron
+#Type of glass: (Class Attribute)
+#1 - building_windows_float_processed
+#2 - building_windows_non_float_processed
+#3 - vehicle_windows_float_processed
+#4 - vehicle_windows_non_float_processed (none in this database)
+#5 - containers
+#6 - tableware
+#7 - headlamps
+
+install.packages('caTools')  #for train and test data split
+install.packages('dplyr')    #for Data Manipulation
+install.packages('ggplot2')  #for Data Visualization
+install.packages('class')    #KNN 
+install.packages('caret')    #Confusion Matrix
+install.packages('corrplot') #Correlation Plot
+
+
+
+library(caTools)
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(class)
+library(corrplot)
+
+
+#DATASET SELECTION
+
+glass <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/glass/glass.data",
+                  col.names=c("RI","Na","Mg","Al","Si","K","Ca","Ba","Fe","Type"))
+
+
+#DATA VISUALIZATION
+
+
+#Plot Glass dataset
+featurePlot(x = glass[, 1:9], 
+            y = glass$Type, 
+            plot = "ellipse", 
+            ## Add a key at the top
+            auto.key = list(columns = 7))
+
+
+
+#Dataset Pre-processing
+
+
+#Add NA to the dataset
+glassNA<-glass
+random_row<-sample(c(1:nrow(glass)), 5)
+random_col<-sample(c(1:ncol(glass)), 5)
+glassNA[random_row,random_col ]<-NA
+
+
+summary(glass)
+summary(glassNA)
+
+
+
+#Imputing missing values using KNN, also centering and scaling numerical columns
+glasspreNA<- preProcess(glassNA, method = c("knnImpute","center","scale"))
+glasspre_proNA<-predict(glasspreNA, glass)
+
+glasspre<- preProcess(glass, method = c("center","scale"))
+glasspre_pro<-predict(glasspre, glass)
+summary(glasspre_proNA)
+summary(glasspre_pro)
+
+#####Standardize the Data#######
+
+standard.features <- scale(glass[,1:9])
+
+#Join the standardized data with the target column
+data <- cbind(standard.features,glass[10])
+#Check if there are any missing values to impute. 
+anyNA(data)
+
+
+# Looks like the data is free from NA's
+head(data)
+
+
+corrplot(cor(data))
+
+
+#FORMATION OF TRAINING AND TEST SETS
+
+#Cross Validation
+
+kfoldcv <- trainControl(method="cv", number=10)
+performance_metric <- "Accuracy"
+model <- train(Type ~ ., data = glass, 
+               trControl=kfoldcv, 
+               method="rf")
+model
+
+set.seed(1234)
+
+
+#Classification and Regression Trees (CART)
+cart.glass <- train(Type~., data=glass, method="rpart", metric=performance_metric, trControl=kfoldcv,preProcess=c("center", "scale"))
+
+#Naive  Bayes(NB)
+nb.glass <- train(Type~., data=glass, method="nb", metric=performance_metric, trControl=kfoldcv,preProcess=c("center", "scale"))
+
+# Random Forest
+rf.glass <- train(Type~., data=glass, method="rf", metric=performance_metric, trControl=kfoldcv,preProcess=c("center", "scale"))
+
+
+
+#Accuracy Summary of Glass Dataset
+
+results.glass <- resamples(list(lda=lda.glass, cart=cart.glass,  svm=svm.glass, rf=rf.glass))
+summary(results.glass)
+
+dotplot(results.glass)
+
+
+#Leave-one-out Cross Validation(Jack Knife)
+
+
+
+
+#BUILD TRAIN AND TEST A RANDOM FOREST TYPE CLASSIFIER
+
+ontrol <- trainControl(method="repeatedcv", number=10, repeats=3, search="grid")
+tunegrid <- expand.grid(mtry=c(1:15))
+rf_gridsearch <- train(Type~., data=Glass, method="rf", metric=performance_metric, tuneGrid=tunegrid, trControl=control,preProcess=c("center", "scale"))
+print(rf_gridsearch)
+
+
+#BUILD TRAIN AND  TEST A NAIVE BAYES TYPE CLASSIFIER
+
+glass_classifier <- naiveBayes(train_glass,train_glass_labels,laplace = 0)
+glass_predictor <- predict(glass_classifier,test_glass)
+confusionMatrix(glass_predictor,test_glass_labes,positive = "Yes")
+
+glass_classifier_lp1 <- naiveBayes(train_glass,train_glass_labels,laplace = 1)
+glass_predictor <- predict(glass_classifier_lp1,test_glass)
+confusionMatrix(glass_predictor,test_glass_labes,positive = "Yes")
+
+#BUILD TRAIN AND TEST A K-NN CLASSIFIER
+
+set.seed(101)
+
+sample <- sample.split(glass$Type,SplitRatio = 0.70)
+train <- subset(glass,sample==TRUE)
+test <- subset(glass,sample==FALSE)
+
+#KNN
+predicted.type <- knn(train[1:9],test[1:9],train$Type,k=1)
+#Error in prediction
+error <- mean(predicted.type!=test$Type)
+#Confusion Matrix
+confusionMatrix(predicted.type,test$Type)
+
+
+
+##Choosing K Value by Visualization
+ggplot(knn.error,aes(k,error.type))+ 
+  geom_point()+ 
+  geom_line() + 
+  scale_x_continuous(breaks=1:10)+ 
+  theme_bw() +
+  xlab("Value of K") +
+  ylab('Error')
+
+#MEASURE PERFORMANCE
+## A simple example with data in package ROCR
+library(ROCR)
+data(ROCR.simple)
+pred <- prediction(ROCR.simple$predictions,ROCR.simple$labels)
+perf <- performance(pred,"prec","rec")
+## The plot obtained with the standard ROCR functions
+## Not run: 
+plot(perf)
+
+## End(Not run)
+library(PRROC)
+## Now our Precision/Recall curve avoiding the saw-tooth effect
+## Not run: 
+pr.curve(ROCR.simple$predictions,ROCR.simple$labels)
+
+## End(Not run)
